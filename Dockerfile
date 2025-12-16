@@ -27,11 +27,13 @@ COPY . /workspace/
 # User requested optimization: single command without separate install step
 RUN cd unsafe-rust-benchmark && \
     python3 x.py build && \
+    python3 x.py build src/tools/cargo && \
     python3 x.py install
 
 # Set up environment variables for the instrumentation
 # We need these set BEFORE building perf so it uses the correct compiler
 ENV RUSTC_PATH=/workspace/unsafe-rust-benchmark/build/x86_64-unknown-linux-gnu/stage1/bin/rustc
+ENV RUSTC=/workspace/unsafe-rust-benchmark/build/x86_64-unknown-linux-gnu/stage1/bin/rustc
 ENV PATH="/workspace/unsafe-rust-benchmark/build/x86_64-unknown-linux-gnu/stage1/bin:${PATH}"
 
 # Build the instrumentation library (coverage as default)
