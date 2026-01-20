@@ -1,183 +1,92 @@
 # Understanding Unsafe Rust Dynamically: Behaviors and Benchmarks
 
-We provide the artifacts for the paper in two formats, one as a docker image that has our prebuilt compiler and benchrmarks and instrumentation. Secondly as a repository that you can run and compile yourself.
+We provide the artifacts for the paper in two formats:
+1. **Docker Image**: A pre-built environment with our modified compiler, benchmarks, and instrumentation tools.
+2. **Repository**: The source code to build and run everything from scratch.
 
-# Setup
+## Setup
 
-This repository uses **Git Submodules**. To set it up:
+This repository contains everything needed to build the artifact. No external dependencies or submodules are required for the standard flow.
 
+## Directory Structure
+
+- `rustc/`: The modified Rust compiler source code.
+- `perf/`: The instrumentation library and runtime tools.
+- `benchmarks/`: The collection of crates used for benchmarking.
+- `config.toml`: Configuration file for the `run_all_docker_tests.sh` and build process. Defines the build parameters for `rustc`.
+- `pipeline/`: Scripts for running automated experiment pipelines.
+- `Dockerfile`: Configuration for building the Docker image.
+
+## Docker: Getting Started
+
+You can load our pre-built image or build it locally.
+
+### 1. Load Pre-built Image
 ```bash
-git clone --recursive git@github.com:GWSysSec/unsaferust-benchmark-artifact.git
-cd unsaferust-benchmark-artifact
+docker load -i unsaferustbenchv2.tar
+docker run -it unsaferustbench:v2.0
 ```
 
-Or if already cloned:
+### 2. Build Locally
+If you prefer to build the image yourself (e.g., to include local changes):
 ```bash
-./update-repos.sh
+./docker-build.sh
 ```
+This will build the image `unsaferust-bench:local`.
 
-# Directory Structure
-- `unsafe-rust-benchmark`: Submodule containing the compiler and benchmarks.
-- `external/perf-lib`: Submodule containing the instrumentation library.
-- `perf`: Symlink to `external/perf-lib/lib/perf` (for Docker compatibility).
+## Automating Experiments
 
+We provide a comprehensive script to run all experiments automatically.
 
-# Docker getting started
-
-To run the docker image please load our image into docker using
-
-```bash
- docker load -i unsaferustbenchv2.tar
-```
-
-You can verify the image has been loaded using
+### Run All Experiments
+Inside the container (or via `docker run` from host), you can execute:
 
 ```bash
- docker images
+# From host:
+docker run --rm -v $(pwd)/run_all_docker_tests.sh:/workspace/run_all_docker_tests.sh \
+    unsaferust-bench:local bash /workspace/run_all_docker_tests.sh
 ```
 
-Once verified you can run our image using
+This script will:
+1. Sequentially build the `perf` library for each mode (CPU, Heap, Counter, Coverage).
+2. Run the benchmarks for all qualified crates.
+3. Output results to the `pipeline/` directory.
 
-```bash
- docker run -it unsaferustbench:v2.0
-```
+## Manual Usage (Inside Container)
 
-You should now be successfully inside our container and can first navigate to the `perf` folder
+Once inside the container (`docker run -it ...`), you are in `/workspace`.
 
-In this folder is our instrumentation and documentation for it.
-
-To build our different instrumentation tools you can run the following commands
-
-For unsafe coverage data for a benchmark you can run
-
-```bash
-make coverage
-```
-
-For unsafe inst. and fn. data for a benchmark you can run
-
-```bash
-make counter
-```
-
-For unsafe heap usage for a benchmark you can run
-
-```bash
-make heap
-```
-
-For unsafe CPU cycle data for a benchmark you can run
-
-```bash
-make cpu
-```
-
-Note: Instrumentations run one at a time.
-
-After building your choice of instrumentation please run the corresponding `instrumentation` file inside the `perf/env` folder.
-
-For example,to build and connect a tool
-
+### 1. Build Instrumentation
+Navigate to `perf` and build the desired tool:
 ```bash
 cd perf
-make coverage
+make coverage   # Options: coverage, counter, heap, cpu
+```
+
+### 2. Setup Environment
+Source the environment script to link the instrumented library:
+```bash
 cd env
 source coverage.sh
 ```
 
-You can now navigate to the benchmarks folder to run our tools and gather data.
-
-Some instrumentations give you data in the terminal itself, but all of them make coresponding files in the temp folder
-
-An example is as follows
-
+### 3. Run Benchmark
+Navigate to a benchmark and run it:
 ```bash
-# Having built our coverage tool using make coverage and changed the env using source coverage.sh
 cd ../../benchmarks/arrayvec-0.7.6
 cargo bench
-nano /tmp/unsafe_coverage.stat
 ```
 
-# Building our compiler from Scratch (Non-Docker flow)
-
-To build our compiler from scratch and run our tools and experiments, please first pull our repo and build our rust compiler using `x.py`
-
+### 4. View Results
+Results are typically written to `/tmp/`:
 ```bash
-cd unsafe-rust-benchmark
-./x.py build && ./x.py install
+ls -l /tmp/*.stat
 ```
 
-After successfully building our compiler you should see a `build` folder inside the `unsafe-rust-benchmark` folder.
+## config.toml
+The `config.toml` file in the root directory controls the build configuration for the custom Rust compiler. It is copied into the Docker image during the build process to ensure the compiler is built with the correct flags and options supported by our instrumentation.
 
-You will now need to either add this to your path if you do not currently have rust on your system or use a toolchain like `rustup` to add our compiler so that it can be called.
+## Troubleshooting
 
-For `rustup`, an example. While inside `unsafe-rust-benchmark` after build the compiler
-
-```bash
-rustup toolchain link stage1 build/host/stage1
-rustup toolchain link stage2 build/host/stage2
-```
-
-You should now verify that your `rustc`version is correct
-
-```bash
-# should print out rustc 1.80.0-dev
-rustc --version
-```
-
-Now the instructions to build and change flags for our runtime tools inside the `perf` folder are the same as listed above in docker getting started guide. Build your choice of instrumentation singularly and then change the env to match the instrumentation. All outputs will be inside `/tmp/*.stat` where each tool will have its own named file, e.g for `make coverage` the `cargo bench` will produce `unsafe_coverage.stat` as a file.
-
-```bash
-cd ../perf
-make coverage
-cd env
-source coverage
-
-cd ../../benchmarks/arrayvec-0.7.6
-cargo bench
-nano /tmp/unsafe_coverage.stat
-```
-
-# FAQ + ERROR Handling
-
-### Compiler build failures
-
-If at anypoint the compiler fails in its build process please retry using `./x.py build` or `./x.py build --stage 1` folowed by `./x.py build --stage 2`.
-
-### Cargo failures/ Instruments not showing data
-
-You can also build cargo this way by passing `cargo` as an argument but if you already have a cargo you can add our `perf/env` flags to your `.cargo/config.toml` file as followed
-
-```bash
-[build]
-# Please note the stage 1 compiler also works
-rustc = "/path/to/your/stage2/bin/rustc"
-rustflags = [
-    "--emit=llvm-ir",
-    "-C", "unsafe_include_native_lib=false",
-    "-C", "llvm-args=-enable-instmarker",
-    # "-C", "llvm-args=-enable-heap-tracker",
-    # "-C", "llvm-args=-enable-unsafe-function-tracker",
-    # "-C", "llvm-args=-enable-unsafe-inst-counter",
-    "-C", "llvm-args=-enable-dynamic-line-count",
-    # "-C", "llvm-args=-enable-cpu-cycle-count",
-    "-Z", "unstable-options",
-    "--extern", "force:unsafe_perf=/path/to/your/perf/target/release/libunsafe_perf.rlib",
-    "-L", "/path/to/your/perf/target/release/deps"
-]
-```
-
-Remember to only use one instrumentation at a time
-
-### New crate is not showing instrumentation data
-
-We require certain flags in the `Cargo.toml` of the crate to be active, depending on the benchmark suite these should be added to the `Cargo.toml` of the crate being tested. Our selection already have these set for you.
-
-```bash
-...
-[profile.bench]
-debug = true # Or 2
-
-[profile.release]
-debug = true # Or 2
-```
+- **Build Time**: Building the Docker image involves compiling LLVM and `rustc`, which can take 1-2 hours.
+- **Memory**: Ensure Docker has at least 8GB of RAM allocated.

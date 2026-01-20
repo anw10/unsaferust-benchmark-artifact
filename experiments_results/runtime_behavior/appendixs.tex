@@ -1,0 +1,65 @@
+\begin{table*}[b]
+\centering
+\caption{Analyzed Rust crates with lines of code, unsafe code percentage, and download counts}
+\label{table:all_crates}
+{\scriptsize
+\renewcommand{\arraystretch}{1.1}
+
+\begin{tabular}{@{}l@{\hspace{4pt}}r@{\hspace{4pt}}r@{\hspace{4pt}}r@{\hspace{6pt}}|@{\hspace{6pt}}l@{\hspace{4pt}}r@{\hspace{4pt}}r@{\hspace{4pt}}r@{}}
+\toprule
+\textbf{Crate (Version)} & \textbf{LOC} & \textbf{Unsafe \%} & \textbf{DLs} & \textbf{Crate (Version)} & \textbf{LOC} & \textbf{Unsafe \%} & \textbf{DLs} \\
+\midrule
+hashbrown (0.15.3) & 10.5K & 7.67\% & 633.4M & rand (workspace) & 8.1K & 0.34\% & 530.1M \\
+getrandom (0.3.2) & 1.6K & 24.22\% & 488.8M & indexmap (2.9.0) & 7.8K & 0.10\% & 488.6M \\
+memchr (2.7.4) & 8.5K & 14.09\% & 462.0M & log (0.4.27) & 3.3K & 1.95\% & 441.6M \\
+aho-corasick (1.1.3) & 11.3K & 7.41\% & 425.7M & cc (1.2.21) & 7.4K & 2.41\% & 417.6M \\
+cc-rs (workspace) & 7.5K & 2.37\% & 417.6M & parking\_lot\_core (0.9.10) & 9.7K & 14.89\% & 413.7M \\
+parking\_lot (workspace) & 3.6K & 4.60\% & 413.7M & smallvec (2.0.0-alpha.11) & 2.6K & 15.33\% & 406.1M \\
+semver (1.0.26) & 1.4K & 10.39\% & 368.2M & pin-project-lite (0.2.16) & 1.2K & 0.48\% & 334.7M \\
+byteorder (1.5.0) & 2.6K & 3.83\% & 313.6M & tokio (1.44.2) & 56.7K & 3.20\% & 313.4M \\
+http (1.3.1) & 8.6K & 0.75\% & 306.1M & chrono (0.4.41) & 19.5K & 0.09\% & 286.1M \\
+unicode-normalization (0.1.24) & 23.9K & 0.20\% & 274.4M & http-body (1.0.1) & 1.8K & 0.76\% & 272.3M \\
+h2 (0.4.10) & 19.7K & 0.01\% & 268.9M & uuid (1.16.0) & 5.1K & 0.61\% & 268.5M \\
+nom (8.0.0) & 13.7K & 0.19\% & 257.3M & httparse (1.10.1) & 3.0K & 20.91\% & 242.4M \\
+ring (0.17.14) & 16.1K & 3.59\% & 235.6M & flate2 (1.1.1) & 4.0K & 4.41\% & 232.2M \\
+gimli (0.31.1) & 39.1K & 0.07\% & 216.3M & arrayvec (0.7.6) & 1.3K & 16.97\% & 213.6M \\
+signal-hook-registry (1.4.5) & 2.0K & 7.93\% & 212.2M & signal-hook (workspace) & 3.3K & 9.61\% & 212.2M \\
+rustc-demangle (0.1.24) & 2.1K & 5.08\% & 211.7M & num-bigint (0.4.6) & 7.4K & 0.38\% & 205.3M \\
+winnow (0.7.9) & 26.2K & 0.10\% & 199.9M & encoding\_rs (0.8.35) & 131.2K & 0.36\% & 197.9M \\
+rayon-core (1.12.1) & 4.1K & 8.45\% & 193.7M & openssl-sys (0.9.108) & 34.8K & 18.18\% & 182.9M \\
+rust-openssl (workspace) & 34.8K & 18.18\% & 182.9M & sharded-slab (0.1.7) & 4.3K & 4.17\% & 167.4M \\
+utf8parse (0.2.2) & 3.0K & 0.50\% & 162.5M & siphasher (1.0.1) & 1.4K & 4.43\% & 158.9M \\
+bstr (1.12.0) & 6.1K & 5.29\% & 157.7M & petgraph (0.8.1) & 16.4K & 0.27\% & 157.7M \\
+fixedbitset (0.5.7) & 1.8K & 7.54\% & 157.0M & native-tls (0.2.14) & 2.3K & 1.22\% & 139.1M \\
+nu-ansi-term (0.50.1) & 1.6K & 2.19\% & 138.1M & ordered-float (5.0.0) & 2.4K & 0.21\% & 133.2M \\
+deranged (0.4.0) & 2.3K & 0.70\% & 132.5M & filetime (0.2.25) & 1.2K & 5.29\% & 127.2M \\
+serde\_yaml (0.9.34+deprecated) & 8.7K & 2.92\% & 120.0M & dashmap (7.0.0-rc2) & 3.1K & 6.17\% & 117.3M \\
+serde\_with (workspace) & 13.5K & 0.03\% & 110.5M & memmap2 (0.9.5) & 1.9K & 13.32\% & 110.4M \\
+bytemuck (1.23.0) & 2.0K & 28.29\% & 105.3M & async-lock (3.4.0) & 2.4K & 4.23\% & 103.5M \\
+arc-swap (1.7.1) & 2.1K & 1.56\% & 101.0M & polling (3.7.4) & 3.8K & 7.02\% & 93.5M \\
+combine (4.6.7) & 11.6K & 0.15\% & 87.9M & portable-atomic (1.11.0) & 21.9K & 30.76\% & 84.7M \\
+hashlink (0.10.0) & 3.0K & 14.20\% & 76.4M & brotli-decompressor (5.0.0) & 31.2K & 1.01\% & 73.1M \\
+async-task (4.7.1) & 1.3K & 32.75\% & 71.8M & colored (3.0.0) & 2.0K & 0.98\% & 71.4M \\
+lexical-core (1.0.5) & 27.6K & 1.03\% & 64.9M & headers (0.4.0) & 5.9K & 0.02\% & 59.5M \\
+fragile (2.0.1) & 1.1K & 2.76\% & 53.5M & value-bag (1.11.1) & 5.8K & 0.15\% & 49.4M \\
+git2 (0.20.2) & 18.6K & 24.70\% & 48.3M & git2-rs (workspace) & 19.5K & 23.59\% & 48.3M \\
+jni (0.21.1) & 5.2K & 7.54\% & 47.2M & borsh-rs (workspace) & 8.0K & 0.09\% & 46.2M \\
+rmp (0.8.14) & 6.2K & 0.03\% & 45.5M & msgpack-rust (workspace) & 6.2K & 0.03\% & 45.5M \\
+matrixmultiply (0.3.9) & 3.2K & 55.73\% & 42.0M & async-std (1.13.1) & 13.6K & 0.76\% & 41.8M \\
+simdutf8 (0.1.5) & 2.0K & 15.16\% & 41.1M & jpeg-decoder (0.3.1) & 4.2K & 12.60\% & 39.8M \\
+arbitrary (workspace) & 2.1K & 0.77\% & 39.8M & pulldown-cmark (0.13.0) & 12.8K & 1.92\% & 39.5M \\
+bytes-utils (0.1.4) & 1.1K & 0.61\% & 38.6M & triomphe (0.1.14) & 2.0K & 11.88\% & 34.7M \\
+dlv-list (0.6.0) & 2.4K & 0.46\% & 34.5M & ron (0.10.1) & 7.2K & 0.10\% & 33.8M \\
+ordered-multimap (0.7.3) & 3.4K & 0.18\% & 33.6M & ouroboros (0.18.5) & 2.7K & 0.86\% & 32.9M \\
+metrics (0.24.2) & 10.9K & 0.84\% & 31.6M & cpp\_demangle (0.4.4) & 10.2K & 0.05\% & 31.4M \\
+rgb (0.8.90-alpha.2) & 2.8K & 1.85\% & 30.7M & curl-rust (workspace) & 4.2K & 15.88\% & 29.7M \\
+ndarray (0.16.1) & 16.9K & 5.63\% & 27.7M & curl (0.4.47) & 4.2K & 15.90\% & 26.9M \\
+parity-scale-codec (3.7.4) & 5.7K & 0.40\% & 25.3M & slotmap (1.0.7) & 4.4K & 4.60\% & 25.2M \\
+os\_info (3.10.0) & 2.8K & 1.31\% & 22.4M & miette (workspace) & 7.2K & 3.37\% & 22.0M \\
+scroll (0.12.0) & 1.5K & 0.61\% & 20.8M & libsecp256k1 (0.7.2) & 4.6K & 0.65\% & 19.4M \\
+loom (0.7.2) & 5.3K & 2.86\% & 17.1M & cssparser (0.35.0) & 3.7K & 0.91\% & 16.2M \\
+zopfli (0.8.2) & 3.4K & 0.18\% & 15.6M & fs4 (0.13.1) & 1.7K & 2.87\% & 14.7M \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
