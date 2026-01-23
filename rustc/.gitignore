@@ -36,7 +36,11 @@ config.mk
 config.stamp
 no_llvm_build
 Cargo.lock
-Cargo.toml
+# Ignore generated root Cargo.toml but allow source Cargo.toml files
+/Cargo.toml
+# Whitelist essential bootstrap Cargo.toml files
+!/src/bootstrap/Cargo.toml
+!/src/tools/*/Cargo.toml
 
 ## Build
 /dl/
