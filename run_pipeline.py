@@ -72,45 +72,60 @@ CRATE_CONFIGS = {
     "rayon": {
         "cwd": "rayon-demo",
         "cmds": [
+            "cargo clean",
             "cargo build --release",
             "../target/release/rayon-demo nbody bench --bodies 500"
         ]
     },
     "parking_lot": {
-        "cwd": "benchmark", # Note: 'benchmark' folder, singular based on ls output
+        "cwd": "benchmark", 
         "cmds": [
+            "cargo clean",
             "cargo build --release",
             "./target/release/mutex 2 4 10 2 4",
             "./target/release/rwlock 4 4 4 10 2 4"
         ]
     },
     "memchr": {
-        "cwd": "benchmarks", # Run from benchmarks/memchr/benchmarks (engines.toml location)
         "cmds": [
-            # 1. Build using cargo (relies on global RUSTUP_TOOLCHAIN=stage1)
-            # Need to be in the engine dir for build? No, we can build manually first.
-            "cd engines/rust-memchr && cargo clean && cargo build --release",
-            
-            # 2. Run execution via rebar measure --verify (runs all rust-memchr benchmarks once)
-            # rebar expects to be run from dir containing engines.toml, which is 'benchmarks' relative to crate root.
-            # But crate root is benchmarks/memchr. 'cwd' above makes us start in benchmarks/memchr/benchmarks.
-            f"{os.path.expanduser('~/.cargo/bin/rebar')} measure --verify -e 'rust/memchr/memmem/(oneshot|prebuilt)' -d .",
+            "cargo install --path ../rebar --force",
+            f"{os.path.expanduser('~/.cargo/bin/rebar')} build -e 'rust/memchr/memmem/(oneshot)'",
+            f"{os.path.expanduser('~/.cargo/bin/rebar')} measure --verify -e 'rust/memchr/memmem/(oneshot)'",
         ],
         "flags": ["-C", "target-feature=-sse2,-avx2"]
     },
     "jni": {
-        "cmds": ["cargo bench --features invocation"]
+        "cmds": [
+            "cargo clean",
+            "cargo build --release --features invocation",
+            "cargo bench --features invocation"
+        ]
     },
     "ring": {
-        "cmds": ["cargo bench --benches"]
+        "cwd": "bench",
+        "cmds": [
+            "cargo clean", 
+            "cargo build --release",
+            "cargo bench"
+        ],
+        "use_absolute_rustflags": True
     },
-    "rayon-core": { # rayon repo has recursed members? usually we run 'rayon'
-        "skip": True # Assuming rayon covers it
+    "tokio": {
+        "cwd": "benches",
+        "cmds": [
+            "cargo clean",
+            "cargo build --release", 
+            "cargo bench --locked"
+        ],
+        "timeout": 3600
+    },
+    "rayon-core": {
+        "skip": True
     }
 }
 
-def run_cmd(cmd, cwd=None, env=None, timeout=None):
-    """Run a shell command."""
+def run_cmd(cmd, cwd=None, env=None, timeout=600):
+    """Run a shell command with default 10min timeout."""
     print(f"Running: {cmd} (cwd={cwd})")
     try:
         subprocess.run(
@@ -207,21 +222,36 @@ def run_crate(crate_name, exp_name, config, output_dir):
 
     # Construct RUSTFLAGS with ABSOLUTE paths for build stability
     # Relative paths in RUSTFLAGS fail for dependencies (e.g. libc) as rustc CWD changes or differs
-    rustflags = [
-        "--emit=llvm-ir,link",
-        "-Z", "unstable-options",
-        f"--extern", f"force:unsafe_perf={PERF_RLIB}",
-        "-L", f"{PERF_DEPS}"
-    ]
+    # For subdirectory builds (ring/bench, tokio/benches), we need absolute paths
+    use_absolute = custom_config.get("use_absolute_rustflags", False) if custom_config else False
+    
+    if use_absolute or (custom_config and "cwd" in custom_config):
+        # Use absolute paths for workspace members
+        rustflags = [
+            "--emit=llvm-ir,link",
+            "-Z", "unstable-options",
+            f"--extern", f"force:unsafe_perf={PERF_RLIB.resolve()}",
+            "-L", f"{PERF_DEPS.resolve()}"
+        ]
+    else:
+        rustflags = [
+            "--emit=llvm-ir,link",
+            "-Z", "unstable-options",
+            f"--extern", f"force:unsafe_perf={PERF_RLIB}",
+            "-L", f"{PERF_DEPS}"
+        ]
     rustflags.extend(config["flags"])
     
     env["RUSTFLAGS"] = " ".join(rustflags)
-    env["UNSAFE_BENCH_OUTPUT_DIR"] = str(rel_output_dir)
-    print(f"DEBUG: UNSAFE_BENCH_OUTPUT_DIR={rel_output_dir} (cwd={crate_dir})")
+    env["UNSAFE_BENCH_OUTPUT_DIR"] = str(abs_output_dir)
+    env["CARGO_PRIMARY_PACKAGE"] = "1"
+    print(f"DEBUG: UNSAFE_BENCH_OUTPUT_DIR={abs_output_dir} (cwd={crate_dir})")
     
     # Determine execution strategy
     exec_cwd = crate_dir
-    cmds = ["cargo bench"] # Default
+    # Determine execution strategy
+    exec_cwd = crate_dir
+    cmds = ["cargo clean", "cargo build --release", "cargo bench"] # Default sequence
     
     if custom_config:
         if "cwd" in custom_config:
@@ -238,10 +268,14 @@ def run_crate(crate_name, exp_name, config, output_dir):
         if "cmds" in custom_config:
             cmds = custom_config["cmds"]
 
+        if "env" in custom_config:
+            env.update(custom_config["env"])
+
     # Execute Commands
     success = True
+    cmd_timeout = custom_config.get("timeout", 600) if custom_config else 600
     for cmd in cmds:
-        if not run_cmd(cmd, cwd=exec_cwd, env=env, timeout=600):
+        if not run_cmd(cmd, cwd=exec_cwd, env=env, timeout=cmd_timeout):
             print(f"Command failed: {cmd}")
             success = False
             break # Stop executing subsequent commands (e.g. run after build) if previous failed
@@ -257,11 +291,18 @@ def run_crate(crate_name, exp_name, config, output_dir):
             shutil.move(expected_file, new_name)
             print(f"Saved results to: {new_name.name}")
         else:
-             # It implies no coverage/stats were written.
-             # For some crates (like parking_lot), running the binary works.
-             # If file not found, maybe it wasn't named as expected?
-             # But the runtime always writes to {UNSAFE_BENCH_OUTPUT_DIR}/unsafe_coverage.stat etc.
-             print(f"Warning: Expected output file not found: {expected_file}")
+             fallback_file = Path("/tmp") / config["output_file"]
+             if fallback_file.exists():
+                 print(f"Found results in fallback location: {fallback_file}")
+                 new_name = output_dir / f"{crate_name}_{config['output_file']}"
+                 shutil.move(fallback_file, new_name)
+                 print(f"Saved results to: {new_name.name}")
+             else:
+                 # It implies no coverage/stats were written.
+                 # For some crates (like parking_lot), running the binary works.
+                 # If file not found, maybe it wasn't named as expected?
+                 # But the runtime always writes to {UNSAFE_BENCH_OUTPUT_DIR}/unsafe_coverage.stat etc.
+                 print(f"Warning: Expected output file not found: {expected_file} or {fallback_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="Unsafe Rust Benchmark Pipeline")

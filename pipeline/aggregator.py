@@ -60,11 +60,39 @@ class Aggregator:
             stats = self.get_crate(crate)
             try:
                 content = f.read_text()
-                # Extract using Simple Regex or Split
-                # "Unsafe percentage: 12.34"
-                m = re.search(r"Unsafe percentage:\s*([\d\.]+)", content)
-                if m:
-                    stats.cpu_unsafe_pct = float(m.group(1))
+                
+                total_cycles = 0
+                unsafe_cycles = 0
+                external_cycles = 0
+                unsafe_blocks = 0
+                external_calls = 0
+
+                # Split by the header to handle appended runs
+                blocks = content.split("===== CPU Cycle Statistics =====")
+                for block in blocks:
+                    if not block.strip(): continue
+
+                    tc = re.search(r"Total cycles:\s*(\d+)", block)
+                    uc = re.search(r"Unsafe cycles:\s*(\d+)", block)
+                    ec = re.search(r"External cycles:\s*(\d+)", block)
+                    ub = re.search(r"Unsafe blocks:\s*(\d+)", block)
+                    exc = re.search(r"External calls:\s*(\d+)", block)
+
+                    if tc: total_cycles += int(tc.group(1))
+                    if uc: unsafe_cycles += int(uc.group(1))
+                    if ec: external_cycles += int(ec.group(1))
+                    if ub: unsafe_blocks += int(ub.group(1))
+                    if exc: external_calls += int(exc.group(1))
+
+                # Calculate Internal Cycles
+                internal_cycles = total_cycles - external_cycles
+                if internal_cycles < 0: internal_cycles = total_cycles # Should not happen
+
+                if internal_cycles > 0:
+                    stats.cpu_unsafe_pct = (unsafe_cycles / internal_cycles) * 100.0
+                else:
+                    stats.cpu_unsafe_pct = 0.0
+
             except Exception as e:
                 print(f"Error parsing CPU stats for {crate}: {e}")
 
