@@ -19,14 +19,14 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /workspace
 
-# Copy the local repository contents
-# Note: This includes all files from your local clone
-COPY . /workspace/
+# Copy ONLY rustc first to cache the heavy build
+COPY rustc /workspace/rustc
 
-# Copy the config.toml to the rustc directory
-# This ensures we use the exact configuration requested
-COPY config.toml /workspace/rustc/config.toml
-
+# Configure rustc build for Docker
+# The config.toml in rustc/config.toml is already configured for this environment:
+# - prefix = "/workspace/rust-root"
+# - extended = true
+# - tools = ["cargo"]
 
 
 # Build rustc and LLVM
@@ -39,10 +39,19 @@ RUN cd rustc && \
 
 # Set up environment variables for the instrumentation
 # We need these set BEFORE building perf so it uses the correct compiler
-ENV RUSTC_PATH=/workspace/rustc/build/x86_64-unknown-linux-gnu/stage1/bin/rustc
-ENV RUSTC=/workspace/rustc/build/x86_64-unknown-linux-gnu/stage1/bin/rustc
-# Added llvm-config path as requested
-ENV PATH="/workspace/rustc/build/x86_64-unknown-linux-gnu/stage1/bin:/workspace/rustc/build/x86_64-unknown-linux-gnu/llvm/bin:${PATH}"
+# 1. /workspace/rust-root/bin: The 'install' step puts the stable binaries here (rustc, cargo)
+# 2. /workspace/rustc/build/.../stage1/bin: The stage1 compiler (if needed directly)
+# 3. llvm/bin: For llvm-config
+ENV RUSTC_PATH=/workspace/rust-root/bin/rustc
+ENV RUSTC=/workspace/rust-root/bin/rustc
+ENV PATH="/workspace/rust-root/bin:/workspace/rustc/build/x86_64-unknown-linux-gnu/stage1/bin:/workspace/rustc/build/x86_64-unknown-linux-gnu/llvm/bin:${PATH}"
+
+# Copy the rest of the repository (scripts, benchmarks, perf)
+# This way, changes to scripts don't invalidate the rustc build
+COPY . /workspace/
+
+# Install JDK for JNI benchmark and Clang for Ring (Placed here to preserve rustc build cache)
+RUN apt-get update && apt-get install -y default-jdk clang && rm -rf /var/lib/apt/lists/*
 
 # Build the Instrumentation Library
 # We build 'coverage' by default so the library is present.

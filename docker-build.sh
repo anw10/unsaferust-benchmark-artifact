@@ -16,19 +16,7 @@ echo ""
 # Non-interactive mode
 echo "Start building..."
 
-# Step 0: Configuration Check
-echo "Step 0: Checking configuration..."
-if [ -f "config.toml" ]; then
-    echo "Found local config.toml."
-    # Copy to rustc directory for build
-    echo "Copying config.toml to ./rustc/config.toml..."
-    cp config.toml rustc/config.toml
-else
-    echo "WARNING: config.toml not found in current directory."
-    echo "Using default configuration from repository."
-fi
 
-echo ""
 
 
 echo ""

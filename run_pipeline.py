@@ -65,6 +65,11 @@ EXPERIMENTS = {
             "-C", "llvm-args=-enable-dynamic-line-count",
         ]
     },
+    "native": {
+        "feature": "", 
+        "output_file": "",
+        "flags": []
+    }
 }
 
 # Crate-Specific Configurations
@@ -94,6 +99,15 @@ CRATE_CONFIGS = {
         ],
         "flags": ["-C", "target-feature=-sse2,-avx2"]
     },
+    "simd-json": {
+        "cmds": [
+            "cargo update -p half --precise 2.3.1",
+            "cargo update -p proptest --precise 1.4.0",
+            "cargo clean",
+            "cargo build --release",
+            "cargo bench"
+        ]
+    },
     "jni": {
         "cmds": [
             "cargo clean",
@@ -108,11 +122,14 @@ CRATE_CONFIGS = {
             "cargo build --release",
             "cargo bench"
         ],
-        "use_absolute_rustflags": True
+        "use_absolute_rustflags": True,
+        "env": {"CC": "clang"}
     },
     "tokio": {
         "cwd": "benches",
         "cmds": [
+            "cargo update -p half --precise 2.3.1",
+            "cargo update -p proptest --precise 1.4.0",
             "cargo clean",
             "cargo build --release", 
             "cargo bench --locked"
@@ -152,6 +169,9 @@ def build_perf(feature):
     env = os.environ.copy()
     if "RUSTFLAGS" in env:
         del env["RUSTFLAGS"]
+
+    if not feature: # Skip build for native
+        return
 
     # Clean first ensures no feature mixing
     run_cmd("cargo clean", cwd=PERF_DIR, env=env) 
@@ -220,29 +240,30 @@ def run_crate(crate_name, exp_name, config, output_dir):
         print(f"Error calculating relative paths: {e}")
         return
 
-    # Construct RUSTFLAGS with ABSOLUTE paths for build stability
-    # Relative paths in RUSTFLAGS fail for dependencies (e.g. libc) as rustc CWD changes or differs
-    # For subdirectory builds (ring/bench, tokio/benches), we need absolute paths
-    use_absolute = custom_config.get("use_absolute_rustflags", False) if custom_config else False
+    # Construct RUSTFLAGS
+    # Only inject unsafe_perf if NOT native experiment
+    if exp_name != "native":
+        use_absolute = custom_config.get("use_absolute_rustflags", False) if custom_config else False
+        
+        if use_absolute or (custom_config and "cwd" in custom_config):
+            # Use absolute paths for workspace members
+            rustflags = [
+                "--emit=llvm-ir,link",
+                "-Z", "unstable-options",
+                f"--extern", f"force:unsafe_perf={PERF_RLIB.resolve()}",
+                "-L", f"{PERF_DEPS.resolve()}"
+            ]
+        else:
+            rustflags = [
+                "--emit=llvm-ir,link",
+                "-Z", "unstable-options",
+                f"--extern", f"force:unsafe_perf={PERF_RLIB}",
+                "-L", f"{PERF_DEPS}"
+            ]
+        rustflags.extend(config["flags"])
+        
+        env["RUSTFLAGS"] = " ".join(rustflags)
     
-    if use_absolute or (custom_config and "cwd" in custom_config):
-        # Use absolute paths for workspace members
-        rustflags = [
-            "--emit=llvm-ir,link",
-            "-Z", "unstable-options",
-            f"--extern", f"force:unsafe_perf={PERF_RLIB.resolve()}",
-            "-L", f"{PERF_DEPS.resolve()}"
-        ]
-    else:
-        rustflags = [
-            "--emit=llvm-ir,link",
-            "-Z", "unstable-options",
-            f"--extern", f"force:unsafe_perf={PERF_RLIB}",
-            "-L", f"{PERF_DEPS}"
-        ]
-    rustflags.extend(config["flags"])
-    
-    env["RUSTFLAGS"] = " ".join(rustflags)
     env["UNSAFE_BENCH_OUTPUT_DIR"] = str(abs_output_dir)
     env["CARGO_PRIMARY_PACKAGE"] = "1"
     print(f"DEBUG: UNSAFE_BENCH_OUTPUT_DIR={abs_output_dir} (cwd={crate_dir})")
@@ -286,7 +307,7 @@ def run_crate(crate_name, exp_name, config, output_dir):
         # Rename output file
         # The runtime writes to output_dir / output_file
         expected_file = output_dir / config["output_file"]
-        if expected_file.exists():
+        if config["output_file"] and expected_file.exists():
             new_name = output_dir / f"{crate_name}_{config['output_file']}"
             shutil.move(expected_file, new_name)
             print(f"Saved results to: {new_name.name}")
@@ -307,15 +328,17 @@ def run_crate(crate_name, exp_name, config, output_dir):
 def main():
     parser = argparse.ArgumentParser(description="Unsafe Rust Benchmark Pipeline")
     parser.add_argument("--crate", help="Run for specific crate")
-    parser.add_argument("--experiment", choices=EXPERIMENTS.keys(), help="Run specific experiment")
+    parser.add_argument("--experiment", choices=EXPERIMENTS.keys(), help="Run specific experiment (default: native)")
     parser.add_argument("--all", action="store_true", help="Run all experiments")
     parser.add_argument("--output", help="Custom output directory")
+    parser.add_argument("--showstats", action="store_true", help="Display aggregated stats table")
     
     args = parser.parse_args()
     
     if not args.all and not args.experiment:
-        print("Please specify --experiment or --all")
-        return
+        print("No experiment specified, running in 'native' mode (compile/bench only).")
+        print("For coverage, use: python3 run_pipeline.py --experiment coverage")
+        args.experiment = "native"
 
     # Setup Output Directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -362,10 +385,12 @@ def main():
             run_crate(crate, exp, config, base_output_dir)
 
     # Aggregation
-    print("\n=== Aggregating Results ===")
-    agg = Aggregator(base_output_dir)
-    agg.collect_all()
-    agg.print_table()
+    # Aggregation
+    if args.showstats:
+        print("\n=== Aggregating Results ===")
+        agg = Aggregator(base_output_dir)
+        agg.collect_all()
+        agg.print_table()
     
     print(f"\nFull results in: {base_output_dir}")
 
