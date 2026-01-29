@@ -1,6 +1,7 @@
 # Understanding Unsafe Rust Dynamically: Behaviors and Benchmarks
 
 We provide the artifacts for the paper in two formats:
+
 1. **Docker Image**: A pre-built environment with our modified compiler, benchmarks, and instrumentation tools.
 2. **Repository**: The source code to build and run everything from scratch.
 
@@ -25,40 +26,39 @@ This repository contains everything needed to build the artifact. No external de
 We distinguish between two types of data and experiments in this artifact:
 
 1. **Runtime Behavior Analysis (100 Crates)**
-    - **Source**: Dataset of 100 popular crates.
-    - **Method**: Executed via **`cargo test`** suites.
-    - **Instrumentation**: `cpu_cycle`, `heap_tracker`, `unsafe_counter`.
-    - **Data**: The aggregated results are stored in `master_runtime_stats.json`. This corresponds to the runtime analysis phase described in the paper.
+   - **Source**: Dataset of 100 popular crates.
+   - **Method**: Executed via **`cargo test`** suites.
+   - **Instrumentation**: `cpu_cycle`, `heap_tracker`, `unsafe_counter`.
+   - **Data**: The aggregated results are stored in `master_runtime_stats.json`. This corresponds to the runtime analysis phase described in the paper.
 
 2. **Benchmark Dynamics (Benchmark Suite)**
-    - **Source**: The specific benchmarks located in the `benchmarks/` directory (e.g., `ring`, `regex`).
-    - **Method**: Executed via **`cargo bench`** performance benchmarks.
-    - **Configuration**: Detailed commands and flags are listed in `benchmark_configs.md`.
-    - **Goal**: To analyze behavior under specific high-load scenarios.
+   - **Source**: The specific benchmarks located in the `benchmarks/` directory (e.g., `ring`, `regex`).
+   - **Method**: Executed via **`cargo bench`** performance benchmarks.
+   - **Configuration**: Detailed commands and flags are listed in `benchmark_configs.md`.
+   - **Goal**: To analyze behavior under specific high-load scenarios.
 
 ## Docker: Getting Started
 
 You can load our pre-built image or build it locally.
 
-### 1. Pull from Docker Hub (Recommended)
-You can pull the pre-built image directly from Docker Hub:
-```bash
-docker pull jvermerr/unsaferust-bench:latest
-docker run -it jvermerr/unsaferust-bench:latest
-```
+### 1. Download and Load Tarball Docker Image (Recommended)
 
-### 2. Load from Tarball (Offline)
 If you have the offline archive:
+
 ```bash
-docker load -i unsaferustbenchv2.tar
-docker run -it unsaferustbench:v2.0
+unzip unsaferustbenchv3.zip
+docker load -i unsaferustbenchv3.tar
+docker run -it unsaferustbench:v3
 ```
 
-### 3. Build Locally
+### 2. Build Locally
+
 If you prefer to build the image yourself (e.g., to include local changes):
+
 ```bash
 ./docker-build.sh
 ```
+
 This will build the image `unsaferust-bench:local`. It takes 1-2 hours as it compiles Rust from source.
 
 ## Automating Experiments (AIO)
@@ -66,15 +66,18 @@ This will build the image `unsaferust-bench:local`. It takes 1-2 hours as it com
 We provide a comprehensive script to run experiments automatically.
 
 ### 1. Run Native Baseline (All Crates)
+
 To run a native baseline (compilation and execution without extra instrumentation) for **all crates**, use the following command with no arguments:
 
 ```bash
 # Inside the container:
 python3 run_pipeline.py --showstats
 ```
-*Note: This defaults to `-experiment native` and runs all crates.*
+
+_Note: This defaults to `-experiment native` and runs all crates._
 
 ### 2. Run Coverage Experiment (All Crates)
+
 To run the unsafe coverage instrumentation on all crates:
 
 ```bash
@@ -82,6 +85,7 @@ python3 run_pipeline.py --experiment coverage --showstats
 ```
 
 ### 3. Run Specific Experiments
+
 You can also use the script to run other experiments (`cpu_cycle`, `heap_tracker`, `unsafe_counter`):
 
 ```bash
@@ -89,6 +93,7 @@ python3 run_pipeline.py --experiment cpu_cycle --showstats
 ```
 
 ### Options
+
 - `--experiment <name>`: Choose from `native`, `coverage`, `cpu_cycle`, `heap_tracker`, `unsafe_counter`.
 - `--crate <name>`: Run for a specific crate only.
 - `--showstats`: Display aggregated statistics table in the console.
@@ -99,13 +104,16 @@ python3 run_pipeline.py --experiment cpu_cycle --showstats
 If you wish to run benchmarks manually or inspect specific crates, follow these steps inside the container (`/workspace`):
 
 ### 1. Build Instrumentation
+
 Navigate to `perf` and build the desired tool:
+
 ```bash
 cd perf
 make coverage   # Options: coverage, counter, heap, cpu
 ```
 
 ### 2. Setup Environment
+
 Source the environment script to link the instrumented library. These scripts set the correct `RUSTFLAGS` and output paths.
 
 ```bash
@@ -118,9 +126,11 @@ source pipeline/env/heap.sh       # For Heap usage
 # OR
 source pipeline/env/counter.sh    # For Unsafe counter
 ```
-*Note: Make sure to source only one environment script at a time (start a fresh shell if switching).*
+
+_Note: Make sure to source only one environment script at a time (start a fresh shell if switching)._
 
 ### 3. Run Benchmark
+
 Navigate to a benchmark and run it using `cargo bench`. See [Benchmark Configurations](benchmark_configs.md) for specific flags or commands used for complex crates.
 
 ```bash
@@ -129,7 +139,9 @@ cargo bench
 ```
 
 ### 4. View Results
+
 Results are written to `/tmp/` by default when running manually:
+
 ```bash
 ls -l /tmp/*.stat
 cat /tmp/unsafe_coverage.stat
