@@ -1,4 +1,4 @@
-# Understanding Unsafe Rust Dynamically: Behaviors and Benchmarks
+# Dynamic Analysis of Unsafe Rust: Behavior and Benchmarks
 
 We provide the artifacts for the paper in two formats:
 
@@ -147,8 +147,75 @@ ls -l /tmp/*.stat
 cat /tmp/unsafe_coverage.stat
 ```
 
-## Troubleshooting
+## Building our compiler from Scratch (Non-Docker flow)
 
-- **Build Time**: Building the Docker image involves compiling LLVM and `rustc`, which can take 1-2 hours.
-- **Memory**: Ensure Docker has at least 8GB of RAM allocated.
-- **Output Paths**: The automated pipeline stores results in `pipeline/results/`, while manual runs typically output to `/tmp/` (controlled by `UNSAFE_BENCH_OUTPUT_DIR`).
+To build our compiler from scratch and run our tools and experiments
+
+```bash
+cd rustc
+./x.py build && ./x.py install
+```
+
+After successfully building our compiler you should see a `build` folder inside the `rustc` folder.
+
+You will now need to either add this to your path if you do not currently have rust on your system or use a toolchain like `rustup` to add our compiler so that it can be called.
+
+For `rustup`. While inside `rustc` after building the compiler
+
+```bash
+rustup toolchain link stage1 build/host/stage1
+rustup toolchain link stage2 build/host/stage2
+```
+
+You should now verify that your `rustc`version is correct
+
+```bash
+# should print out rustc 1.80.0-dev
+rustc --version
+```
+
+The instructions to build and change flags for our runtime tools inside the `perf` folder are the same as the docker flow. Build your choice of instrumentation singularly and then change the env to match the instrumentation. All outputs will be inside `/tmp/*.stat` where each tool will have its own named file, e.g for `make coverage` `cargo bench` will produce `unsafe_coverage.stat` as a file.
+
+```bash
+cd ../perf
+make coverage
+cd pipeline/env
+source coverage.sh
+
+cd ../../benchmarks/arrayvec-0.7.6
+cargo bench
+nano /tmp/unsafe_coverage.stat
+```
+
+## FAQ + Error Handling
+
+### Compiler build failures
+
+If at any point the compiler fails in its build process please retry using `./x.py build` or `./x.py build --stage 1` followed by `./x.py build --stage 2`.
+
+Remember to only use one instrumentation at a time.
+
+### New crate is not showing instrumentation data
+
+We require certain flags in the `Cargo.toml` of the crate to be active, depending on the benchmark suite these should be added to the `Cargo.toml` of the crate being tested. Our selection already have these set for you.
+
+```bash
+...
+[profile.bench]
+debug = true # Or 2
+
+[profile.release]
+debug = true # Or 2
+```
+
+### Build Time
+
+Building the Docker image involves compiling LLVM and `rustc`, which can take 1-2 hours.
+
+### Memory
+
+Ensure Docker has at least 8GB of RAM allocated.
+
+### Output Paths
+
+The automated pipeline stores results in `pipeline/results/`, while manual runs typically output to `/tmp/` (controlled by `UNSAFE_BENCH_OUTPUT_DIR`).
